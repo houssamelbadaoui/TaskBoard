@@ -1,0 +1,128 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProjectRole {
+  OWNER
+  MEMBER
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships         ProjectMember[]
+  createdProjects     Project[]           @relation("ProjectCreator")
+  createdCards        Card[]              @relation("CardCreator")
+  ownedCards          Card[]              @relation("CardOwner")
+  cardCollaborations  CardCollaborator[]
+  completedObjectives Objective[]         @relation("ObjectiveCompleter")
+}
+
+model Project {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdById Int
+  createdBy   User @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  members ProjectMember[]
+  columns Column[]
+}
+
+model ProjectMember {
+  projectId Int
+  userId    Int
+  role      ProjectRole @default(MEMBER)
+  joinedAt  DateTime    @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, userId])
+  @@index([userId])
+}
+
+model Column {
+  id        Int      @id @default(autoincrement())
+  name      String
+  position  Int
+  createdAt DateTime @default(now())
+
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  cards Card[]
+
+  @@unique([projectId, name])
+  @@index([projectId, position])
+}
+
+model Card {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  position    Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  columnId Int
+  column   Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
+
+  ownerId Int
+  owner   User @relation("CardOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+
+  createdById Int
+  createdBy   User @relation("CardCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  objectives    Objective[]
+  collaborators CardCollaborator[]
+
+  @@index([columnId, position])
+  @@index([ownerId])
+}
+
+model Objective {
+  id          Int      @id @default(autoincrement())
+  description String
+  isCompleted Boolean  @default(false)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  cardId Int
+  card   Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  completedById Int?
+  completedBy   User? @relation("ObjectiveCompleter", fields: [completedById], references: [id], onDelete: SetNull)
+
+  @@index([cardId])
+}
+
+model CardCollaborator {
+  cardId Int
+  userId Int
+  addedAt DateTime @default(now())
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, userId])
+  @@index([userId])
+}
