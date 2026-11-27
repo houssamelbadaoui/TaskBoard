@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 const publicPath = path.join(__dirname, "../public");
 
 app.get("/login", (req, res) => {
-  res.sendFile(path.join(publicPath, "login.html"));
+  res.sendFile(path.join(publicPath, "pages", "login.html"));
 });
 app.use(express.static(publicPath));
 
